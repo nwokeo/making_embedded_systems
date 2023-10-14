@@ -104,6 +104,28 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    GPIOE->ODR ^= GPIO_PIN_9;
+    HAL_Delay(100);
+    GPIOE->ODR ^= GPIO_PIN_10;
+    HAL_Delay(100);
+    GPIOE->ODR ^= GPIO_PIN_11;
+    HAL_Delay(100);
+    GPIOE->ODR ^= GPIO_PIN_12;
+    HAL_Delay(100);
+    GPIOE->ODR ^= GPIO_PIN_13;
+    HAL_Delay(100);
+    GPIOE->ODR ^= GPIO_PIN_14;
+    HAL_Delay(100);
+    GPIOE->ODR ^= GPIO_PIN_15;
+    HAL_Delay(100);
+    GPIOE->ODR ^= GPIO_PIN_8;
+    HAL_Delay(100);
+
+    GPIOE->ODR ^= GPIO_PIN_All;
+    HAL_Delay(100);
+    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_All);
+    HAL_Delay(100);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
