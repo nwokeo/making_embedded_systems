@@ -54,7 +54,7 @@ dkms.conf
 .settings/
 .project
 Debug/*
-*.cproject
-*.mxproject
+.cproject
+.mxproject
 *.launch
 *.ioc

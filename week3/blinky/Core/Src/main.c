@@ -18,6 +18,7 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USB_PCD_Init(void);
+static void MX_TIM2_Init(void);
 
 /**
   * @brief  The application entry point.
@@ -36,30 +37,33 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_USB_PCD_Init();
+  MX_TIM2_Init();
 
   while (1)
   {
-    GPIOE->ODR ^= GPIO_PIN_9;
-    HAL_Delay(100);
-    GPIOE->ODR ^= GPIO_PIN_10;
-    HAL_Delay(100);
-    GPIOE->ODR ^= GPIO_PIN_11;
-    HAL_Delay(100);
-    GPIOE->ODR ^= GPIO_PIN_12;
-    HAL_Delay(100);
-    GPIOE->ODR ^= GPIO_PIN_13;
-    HAL_Delay(100);
-    GPIOE->ODR ^= GPIO_PIN_14;
-    HAL_Delay(100);
-    GPIOE->ODR ^= GPIO_PIN_15;
-    HAL_Delay(100);
-    GPIOE->ODR ^= GPIO_PIN_8;
-    HAL_Delay(100);
+	  if(HAL_GPIO_ReadPin(GPIOA, B1_Pin) == GPIO_PIN_SET) {
+		  GPIOE->ODR ^= GPIO_PIN_9;
+		  HAL_Delay(1000);
+	    GPIOE->ODR ^= GPIO_PIN_10;
+	    HAL_Delay(100);
+	    GPIOE->ODR ^= GPIO_PIN_11;
+	    HAL_Delay(100);
+	    GPIOE->ODR ^= GPIO_PIN_12;
+	    HAL_Delay(100);
+	    GPIOE->ODR ^= GPIO_PIN_13;
+	    HAL_Delay(100);
+	    GPIOE->ODR ^= GPIO_PIN_14;
+	    HAL_Delay(100);
+	    GPIOE->ODR ^= GPIO_PIN_15;
+	    HAL_Delay(100);
+	    GPIOE->ODR ^= GPIO_PIN_8;
+	    HAL_Delay(100);
 
-    GPIOE->ODR ^= GPIO_PIN_All;
-    HAL_Delay(100);
-    HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_All);
-    HAL_Delay(100);
+      GPIOE->ODR ^= GPIO_PIN_All;
+      HAL_Delay(100);
+      HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_All);
+      HAL_Delay(100);
+	  }
   }
 }
 
