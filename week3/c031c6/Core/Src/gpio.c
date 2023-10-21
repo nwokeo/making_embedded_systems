@@ -22,13 +22,14 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
-
+#include <stdbool.h>
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
 /* Configure GPIO                                                             */
 /*----------------------------------------------------------------------------*/
 /* USER CODE BEGIN 1 */
+bool flash = true;
 
 /* USER CODE END 1 */
 
@@ -73,5 +74,30 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 2 */
+void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
+{
+	if(GPIO_Pin==BUTT_Pin) {
 
+		  /* Toggle the state between ON and OFF */
+		  if (flash == false) {
+			  flash = true;
+		  } else {
+			  flash = false;
+		  }
+		  /* Delay to debounce the button press */
+//		  HAL_Delay(200);
+
+//		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+
+//		static bool prev_val;
+//		if(prev_val == false) {
+//			  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_SET);
+//			  prev_val = true;
+//		}
+//		else {
+//			  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
+//			  prev_val = false;
+//		}
+	}
+}
 /* USER CODE END 2 */

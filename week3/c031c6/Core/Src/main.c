@@ -24,6 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 
 /* USER CODE END Includes */
 
@@ -45,6 +46,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+//bool flash = true;
 
 /* USER CODE END PV */
 
@@ -89,7 +91,12 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
+
   /* USER CODE BEGIN 2 */
+  void flash_led(){
+	HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
+	HAL_Delay(100);
+  }
 
   /* USER CODE END 2 */
 
@@ -100,6 +107,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if (flash == true) {
+		  flash_led();
+	  }
+	  else {
+		  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
+	  }
   }
   /* USER CODE END 3 */
 }
