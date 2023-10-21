@@ -23,6 +23,8 @@
 
 /* USER CODE BEGIN 0 */
 #include <stdbool.h>
+#include <stdio.h>
+
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -77,6 +79,7 @@ void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
 {
 	if(GPIO_Pin==BUTT_Pin) {
+		  printf("** Button Press ** \n\r");
 
 		  /* Toggle the state between ON and OFF */
 		  if (flash == false) {
@@ -84,8 +87,9 @@ void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
 		  } else {
 			  flash = false;
 		  }
-		  /* Delay to debounce the button press */
-//		  HAL_Delay(200);
+
+// 		TODO: debounce
+//		HAL_Delay(200);
 
 //		HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
 

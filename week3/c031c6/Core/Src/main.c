@@ -25,7 +25,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
-
+#include <stdio.h>
+//#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +59,27 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#define HAL_SMALL_DELAY  40
+// Define serial input and output functions using UART2
+int __io_putchar(int ch)
+{
+    HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_SMALL_DELAY); // infinite delay value
+    return 1;
+}
+
+// Read a character from the UART with small timeout
+// If HAL_UART_Receive() returns error, return EOF (-1), else return the character read
+int __io_getchar(void)
+{
+    uint8_t byte;
+    HAL_StatusTypeDef hal_status = HAL_UART_Receive(&huart2, &byte, sizeof(byte), HAL_SMALL_DELAY);
+    if(HAL_OK == hal_status)
+    {
+        return byte;
+    }
+    else
+        return EOF;
+}
 
 /* USER CODE END 0 */
 
@@ -95,8 +117,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
   void flash_led(){
 	HAL_GPIO_TogglePin(Led_GPIO_Port, Led_Pin);
-	HAL_Delay(100);
+	HAL_Delay(1000);
   }
+//  printf("** USER CODE BEGIN 2 ** \n\r");
+
 
   /* USER CODE END 2 */
 
@@ -107,11 +131,16 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+
 	  if (flash == true) {
 		  flash_led();
+//		  printf("** Flash LED ** \n\r");
 	  }
 	  else {
 		  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
+//		  printf("** Stop Flashing ** \n\r");
+//		  HAL_Delay(1000);
 	  }
   }
   /* USER CODE END 3 */
