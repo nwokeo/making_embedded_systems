@@ -26,6 +26,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #include <stdio.h>
+#include "console.h"
+
 //#include "stdio.h"
 /* USER CODE END Includes */
 
@@ -54,6 +56,7 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+void USART2_SendString(const char* str);
 
 /* USER CODE END PFP */
 
@@ -121,6 +124,10 @@ int main(void)
   }
 //  printf("** USER CODE BEGIN 2 ** \n\r");
 
+  //hw5
+//  stdio_init_all(); // UART setup for both input and output
+  ConsoleInit();
+  USART2_SendString("Test 1 2 3 \r\n");
 
   /* USER CODE END 2 */
 
@@ -141,6 +148,10 @@ int main(void)
 		  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
 //		  printf("** Stop Flashing ** \n\r");
 //		  HAL_Delay(1000);
+
+		//hw5
+		ConsoleProcess();
+//	    sleep_ms(2);
 	  }
   }
   /* USER CODE END 3 */
@@ -183,6 +194,9 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void USART2_SendString(const char* str) {
+	HAL_UART_Transmit(&huart2, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+}
 
 /* USER CODE END 4 */
 
