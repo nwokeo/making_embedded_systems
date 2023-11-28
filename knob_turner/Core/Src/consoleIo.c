@@ -28,16 +28,16 @@ eConsoleError ConsoleIoReceive(uint8_t* buffer, const uint32_t bufferLength, uin
     uint8_t rxByte = 0;
 
  //sit and spin here in case the UART is not yet ready
- while (HAL_UART_GetState(&huart2) != HAL_UART_STATE_READY);
+ while (HAL_UART_GetState(&huart1) != HAL_UART_STATE_READY);
 
  //HAL_UART_Receive is blocking. It will sit and spin here for 2^32 or 4 billion ms, OR until a character arrives
- if (HAL_OK != HAL_UART_Receive(&huart2, &rxByte, 1, HAL_MAX_DELAY))
+ if (HAL_OK != HAL_UART_Receive(&huart1, &rxByte, 1, HAL_MAX_DELAY))
  {
   return CONSOLE_ERROR;
  }
 
  /* Send echo */
- HAL_UART_Transmit(&huart2, (uint8_t*)&rxByte, 1, HAL_MAX_DELAY);
+ HAL_UART_Transmit(&huart1, (uint8_t*)&rxByte, 1, HAL_MAX_DELAY);
 
  buffer[i] = rxByte;
  i++;
