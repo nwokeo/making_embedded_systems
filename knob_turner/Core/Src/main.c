@@ -218,7 +218,8 @@ void stepCV (int steps, uint16_t delay) // CV - Clockwise
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	bool flash = true;
+//	bool flash = true;
+	int step = 0;
 
   /* USER CODE END 1 */
 
@@ -249,40 +250,11 @@ int main(void)
 
   HAL_TIM_Base_Start(&htim2);
 
-  void flash_led(){
-	printf("Flash\n\r");
-	HAL_GPIO_TogglePin(GPIOE, LD4_Pin);
-	HAL_Delay(1000);
-  }
-
-
-  void spinLights() {
-      GPIOE->ODR ^= GPIO_PIN_8; //LD4
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_9; //LD3
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_10;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_11;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_12;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_13;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_14;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_15;
-      HAL_Delay(100);
-
-      GPIOE->ODR ^= GPIO_PIN_All;
-      HAL_Delay(100);
-      HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_All);
-      HAL_Delay(100);
-  }
 
   ConsoleInit();
-//  USART1_SendString("Test USART1_SendString \r\n");
-//  printf("Test printf \n\r");
+//  ConsoleIoSendString("Test 1"); //works
+//  USART1_SendString("Test USART1_SendString \r\n"); //works
+//  printf("Test printf \n\r"); //works
 
   /* USER CODE END 2 */
 
@@ -291,44 +263,22 @@ int main(void)
   while (1)
   {
 
-//	  if (flash == true) {
-//		flash_led();
-//	  }
-//	  else {
-//		HAL_GPIO_WritePin(GPIOE, LD4_Pin, GPIO_PIN_RESET);
-//		ConsoleProcess();
-//	  }
-
 		if(HAL_GPIO_ReadPin(GPIOA, B1_PIN_Pin) == GPIO_PIN_SET) { //B1_PIN_GPIO_Port
-			printf("Button Click \n\r");
-			spinLights();
+			printf("%i", step);
+			printf("\n\r");
+
+			stepCV(1, 1000);  // works
+			step += 1;
 		}
-//		else {
-//			ConsoleProcess();
-//		}
+
 
 	    // 512 full rev & 1 rpm - 14648
-	    stepCV(512, 1000);  // 256 half revolution
-	    HAL_Delay(100);
-	    stepCCV(128, 1000); // 128 quarter revolution
-	    HAL_Delay(100);
+		// works, commented
+//	    stepCV(512, 1000);  // 256 half revolution
+//	    HAL_Delay(100);
+//	    stepCCV(128, 1000); // 128 quarter revolution
+//	    HAL_Delay(100);
 
-//	    HAL_GPIO_WritePin(IN1_PORT, IN1_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN1_PORT, IN1_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
-//	    HAL_GPIO_WritePin(IN2_PORT, IN2_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN2_PORT, IN2_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
-//	    HAL_GPIO_WritePin(IN3_PORT, IN3_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN3_PORT, IN3_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
-//	    HAL_GPIO_WritePin(IN4_PORT, IN4_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN4_PORT, IN4_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
 
     /* USER CODE END WHILE */
 
