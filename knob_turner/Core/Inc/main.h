@@ -73,9 +73,9 @@ void Error_Handler(void);
 #define OSC_IN_GPIO_Port GPIOF
 #define OSC_OUT_Pin GPIO_PIN_1
 #define OSC_OUT_GPIO_Port GPIOF
-#define B1_PIN_Pin GPIO_PIN_0
-#define B1_PIN_GPIO_Port GPIOA
-#define B1_PIN_EXTI_IRQn EXTI0_IRQn
+#define onboard_button_Pin GPIO_PIN_0
+#define onboard_button_GPIO_Port GPIOA
+#define onboard_button_EXTI_IRQn EXTI0_IRQn
 #define stp1_Pin GPIO_PIN_1
 #define stp1_GPIO_Port GPIOA
 #define stp2_Pin GPIO_PIN_2
@@ -90,6 +90,9 @@ void Error_Handler(void);
 #define SPI1_MISO_GPIO_Port GPIOA
 #define SPI1_MISOA7_Pin GPIO_PIN_7
 #define SPI1_MISOA7_GPIO_Port GPIOA
+#define button2_Pin GPIO_PIN_1
+#define button2_GPIO_Port GPIOB
+#define button2_EXTI_IRQn EXTI1_IRQn
 #define LD4_Pin GPIO_PIN_8
 #define LD4_GPIO_Port GPIOE
 #define LD3_Pin GPIO_PIN_9
@@ -120,8 +123,6 @@ void Error_Handler(void);
 #define I2C1_SCL_GPIO_Port GPIOB
 #define I2C1_SDA_Pin GPIO_PIN_7
 #define I2C1_SDA_GPIO_Port GPIOB
-#define MEMS_INT2_Pin GPIO_PIN_1
-#define MEMS_INT2_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 

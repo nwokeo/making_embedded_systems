@@ -60,3 +60,4 @@ Debug/
 *.ioc
 zz_*
 TODO.md
+knob_turner/tmp/*
