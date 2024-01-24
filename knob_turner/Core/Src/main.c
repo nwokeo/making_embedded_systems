@@ -203,6 +203,179 @@ void stepCV (int steps, uint16_t delay) // CV - Clockwise
   }
 }
 
+
+void send_to_lcd (char data, int rs)
+{
+	HAL_GPIO_WritePin(GPIOE, lcd_rs_Pin, rs);  // rs = 1 for data, rs=0 for command
+
+	/* write the data to the respective pin */
+	HAL_GPIO_WritePin(GPIOE, lcd_d7_Pin, ((data>>3)&0x01));
+	HAL_GPIO_WritePin(GPIOE, lcd_d6_Pin, ((data>>2)&0x01));
+	HAL_GPIO_WritePin(GPIOE, lcd_d5_Pin, ((data>>1)&0x01));
+	HAL_GPIO_WritePin(GPIOE, lcd_d4_Pin, ((data>>0)&0x01));
+
+	/* Toggle EN PIN to send the data
+	 * if the HCLK > 100 MHz, use the  20 us delay
+	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
+	 */
+	HAL_GPIO_WritePin(GPIOE, lcd_e_Pin, 1);
+	microDelay(50);
+	HAL_GPIO_WritePin(GPIOE, lcd_e_Pin, 0);
+	microDelay(50);
+}
+
+void lcd_send_cmd (char cmd)
+{
+    char datatosend;
+
+    /* send upper nibble first */
+    datatosend = ((cmd>>4)&0x0f);
+    send_to_lcd(datatosend,0);  // RS must be 0 while sending command
+
+    /* send Lower Nibble */
+    datatosend = ((cmd)&0x0f);
+	send_to_lcd(datatosend, 0);
+}
+
+void lcd_send_data (char data)
+{
+	char datatosend;
+
+	/* send higher nibble */
+	datatosend = ((data>>4)&0x0f);
+	send_to_lcd(datatosend, 1);  // rs =1 for sending data
+
+	/* send Lower nibble */
+	datatosend = ((data)&0x0f);
+	send_to_lcd(datatosend, 1);
+}
+
+void lcd_clear (void)
+{
+	lcd_send_cmd(0x01);
+	HAL_Delay(2);
+}
+
+void lcd_put_cur(int row, int col)
+{
+    switch (row)
+    {
+        case 0:
+            col |= 0x80;
+            break;
+        case 1:
+            col |= 0xC0;
+            break;
+    }
+
+    lcd_send_cmd (col);
+}
+
+
+/* start debug
+ *
+ */
+
+static uint32_t DWT_Delay_Init(void)
+{
+
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk;
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  DWT->CYCCNT = 0;
+
+  __NOP();
+  __NOP();
+  __NOP();
+
+  if(DWT->CYCCNT)
+  {
+    return 0;
+  }
+  else
+  {
+    return 1;
+  }
+}
+
+void DWT_Delay_us(volatile uint32_t usec)
+{
+ uint32_t clk_cycle_start = DWT->CYCCNT;
+ usec *= (HAL_RCC_GetHCLKFreq() / 1000000);
+ while ((DWT->CYCCNT - clk_cycle_start) < usec);
+}
+
+/* end debug */
+
+void lcd_init (void)
+{
+//	DWT_Delay_Init();
+
+	// 4 bit initialisation
+	HAL_Delay(50);  // wait for >40ms
+//	DWT_Delay_us(50);
+	lcd_send_cmd (0x30);
+
+	HAL_Delay(5);  // wait for >4.1ms
+//	DWT_Delay_us(50);
+	lcd_send_cmd (0x30);
+
+	HAL_Delay(1);  // wait for >100us
+//	DWT_Delay_us(1);
+	lcd_send_cmd (0x30);
+
+	HAL_Delay(10);
+//	DWT_Delay_us(10);
+	lcd_send_cmd (0x20);  // 4bit mode
+
+	HAL_Delay(10);
+//	DWT_Delay_us(10);
+
+  // dislay initialisation
+	lcd_send_cmd (0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
+	HAL_Delay(1);
+//	DWT_Delay_us(1);
+
+	lcd_send_cmd (0x08); //Display on/off control --> D=0,C=0, B=0  ---> display off
+	HAL_Delay(1);
+//	DWT_Delay_us(1);
+
+	lcd_send_cmd (0x01);  // clear display
+	HAL_Delay(1);
+	HAL_Delay(1);
+//	DWT_Delay_us(1);
+//	DWT_Delay_us(1);
+
+	lcd_send_cmd (0x06); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
+	HAL_Delay(1);
+//	DWT_Delay_us(1);
+
+	lcd_send_cmd (0x0C); //Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
+}
+
+void lcd_send_string (char *str)
+{
+	while (*str) lcd_send_data (*str++);
+}
+
+void lcd_run (void)
+{
+	printf("LCD test start\n\r");
+	lcd_put_cur(0, 0);
+	lcd_send_string("HELLO ");
+//	lcd_send_string("WORLD ");
+//	lcd_send_string("FROM");
+
+//	lcd_put_cur(1, 0);
+//	lcd_send_string("CONTROLLERS TECH");
+	HAL_Delay(3000);
+//	DWT_Delay_us(3000);
+
+//	lcd_clear();
+	printf("LCD test end\n\r");
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -248,6 +421,10 @@ int main(void)
 //  USART1_SendString("Test USART1_SendString \r\n"); //works
 //  printf("Test printf \n\r"); //works
 
+	lcd_init ();
+	lcd_run();
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -261,6 +438,7 @@ int main(void)
 
 			stepCV(1, 1000);
 			step += 1;
+
 		}
 
 
@@ -381,11 +559,11 @@ static void MX_TIM2_Init(void)
 //{
 //
 //  /* USER CODE BEGIN USART1_Init 0 */
-//////////////////
+////////////////////
 //  /* USER CODE END USART1_Init 0 */
 //
 //  /* USER CODE BEGIN USART1_Init 1 */
-//////////////////
+////////////////////
 //  /* USER CODE END USART1_Init 1 */
 //  huart1.Instance = USART1;
 //  huart1.Init.BaudRate = 115200;
@@ -402,7 +580,7 @@ static void MX_TIM2_Init(void)
 //    Error_Handler();
 //  }
 //  /* USER CODE BEGIN USART1_Init 2 */
-//////////////////
+////////////////////
 //  /* USER CODE END USART1_Init 2 */
 //
 //}
@@ -450,6 +628,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -457,10 +636,23 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, lcd_rw_Pin|lcd_e_Pin|lcd_d4_Pin|lcd_d5_Pin
+                          |lcd_d6_Pin|lcd_d7_Pin|lcd_rs_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, stp1_Pin|stp2_Pin|stp3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(stp4_GPIO_Port, stp4_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : lcd_rw_Pin lcd_e_Pin lcd_d4_Pin lcd_d5_Pin
+                           lcd_d6_Pin lcd_d7_Pin lcd_rs_Pin */
+  GPIO_InitStruct.Pin = lcd_rw_Pin|lcd_e_Pin|lcd_d4_Pin|lcd_d5_Pin
+                          |lcd_d6_Pin|lcd_d7_Pin|lcd_rs_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : stp1_Pin stp2_Pin stp3_Pin */
   GPIO_InitStruct.Pin = stp1_Pin|stp2_Pin|stp3_Pin;

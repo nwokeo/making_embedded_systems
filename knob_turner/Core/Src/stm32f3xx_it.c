@@ -197,6 +197,7 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f3xx.s).                    */
 /******************************************************************************/
+
 /**
   * @brief This function handles EXTI line0 interrupt.
   */
