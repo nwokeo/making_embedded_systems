@@ -47,6 +47,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim4;
 
 //UART_HandleTypeDef huart1;
 
@@ -62,9 +63,12 @@ static void MX_GPIO_Init(void);
 static void MX_USB_PCD_Init(void);
 //static void MX_USART1_UART_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 void USART1_SendString(const char* str);
+void PWM_Init(void);
+void Delay(unsigned int);
 
 /* USER CODE END PFP */
 
@@ -72,6 +76,8 @@ void USART1_SendString(const char* str);
 /* USER CODE BEGIN 0 */
 
 #define HAL_SMALL_DELAY  40
+int row=0;
+int col=0;
 
 // Define serial input and output functions using UART2
 int __io_putchar(int ch)
@@ -107,6 +113,12 @@ void microDelay (uint16_t delay)
 {
   __HAL_TIM_SET_COUNTER(&htim2, 0);
   while (__HAL_TIM_GET_COUNTER(&htim2) < delay);
+}
+
+void lcdDelay (uint16_t us)
+{
+	__HAL_TIM_SET_COUNTER(&htim4, 0);
+	while (__HAL_TIM_GET_COUNTER(&htim4) < us);
 }
 
 void stepCCV (int steps, uint16_t delay) // CCV - Counter Clockwise
@@ -219,9 +231,9 @@ void send_to_lcd (char data, int rs)
 	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
 	 */
 	HAL_GPIO_WritePin(GPIOE, lcd_e_Pin, 1);
-	microDelay(50);
+	lcdDelay(20);
 	HAL_GPIO_WritePin(GPIOE, lcd_e_Pin, 0);
-	microDelay(50);
+	lcdDelay(20);
 }
 
 void lcd_send_cmd (char cmd)
@@ -272,84 +284,36 @@ void lcd_put_cur(int row, int col)
 }
 
 
-/* start debug
- *
- */
-
-static uint32_t DWT_Delay_Init(void)
-{
-
-  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk;
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk;
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-  DWT->CYCCNT = 0;
-
-  __NOP();
-  __NOP();
-  __NOP();
-
-  if(DWT->CYCCNT)
-  {
-    return 0;
-  }
-  else
-  {
-    return 1;
-  }
-}
-
-void DWT_Delay_us(volatile uint32_t usec)
-{
- uint32_t clk_cycle_start = DWT->CYCCNT;
- usec *= (HAL_RCC_GetHCLKFreq() / 1000000);
- while ((DWT->CYCCNT - clk_cycle_start) < usec);
-}
-
-/* end debug */
-
 void lcd_init (void)
 {
-//	DWT_Delay_Init();
-
 	// 4 bit initialisation
 	HAL_Delay(50);  // wait for >40ms
-//	DWT_Delay_us(50);
 	lcd_send_cmd (0x30);
 
 	HAL_Delay(5);  // wait for >4.1ms
-//	DWT_Delay_us(50);
 	lcd_send_cmd (0x30);
 
 	HAL_Delay(1);  // wait for >100us
-//	DWT_Delay_us(1);
 	lcd_send_cmd (0x30);
 
 	HAL_Delay(10);
-//	DWT_Delay_us(10);
 	lcd_send_cmd (0x20);  // 4bit mode
 
 	HAL_Delay(10);
-//	DWT_Delay_us(10);
 
   // dislay initialisation
 	lcd_send_cmd (0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
 	HAL_Delay(1);
-//	DWT_Delay_us(1);
 
 	lcd_send_cmd (0x08); //Display on/off control --> D=0,C=0, B=0  ---> display off
 	HAL_Delay(1);
-//	DWT_Delay_us(1);
 
 	lcd_send_cmd (0x01);  // clear display
 	HAL_Delay(1);
 	HAL_Delay(1);
-//	DWT_Delay_us(1);
-//	DWT_Delay_us(1);
 
 	lcd_send_cmd (0x06); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
 	HAL_Delay(1);
-//	DWT_Delay_us(1);
 
 	lcd_send_cmd (0x0C); //Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
 }
@@ -364,16 +328,38 @@ void lcd_run (void)
 	printf("LCD test start\n\r");
 	lcd_put_cur(0, 0);
 	lcd_send_string("HELLO ");
-//	lcd_send_string("WORLD ");
-//	lcd_send_string("FROM");
+	lcd_send_string("WORLD ");
+	lcd_send_string("FROM");
 
-//	lcd_put_cur(1, 0);
-//	lcd_send_string("CONTROLLERS TECH");
+	lcd_put_cur(1, 0);
+	lcd_send_string("CONTROLLERS TECH");
 	HAL_Delay(3000);
-//	DWT_Delay_us(3000);
 
-//	lcd_clear();
+	lcd_clear();
 	printf("LCD test end\n\r");
+}
+
+void lcd_loop(void) {
+	printf("LCD loop start\n\r");
+	for (int i=0;i<128;i++)
+	{
+	  lcd_put_cur(row, col);
+
+	  lcd_send_data(i+48);
+
+	  col++;
+
+	  if (col > 15) {row++; col = 0;}
+	  if (row > 1) row=0;
+
+	  HAL_Delay(250);
+	}
+	printf("LCD loop end\n\r");
+}
+
+void ledDelay(unsigned int n){
+	unsigned int i =0;
+	for ( i = 0; i < n; ++i) ;
 }
 
 /* USER CODE END 0 */
@@ -385,7 +371,6 @@ void lcd_run (void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-//	bool flash = true;
 	int step = 0;
 
   /* USER CODE END 1 */
@@ -411,10 +396,15 @@ int main(void)
   MX_USB_PCD_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start(&htim2);
+  HAL_TIM_Base_Start(&htim4);
 
+  // LED
+  int32_t CH1_DC = 0;
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 
   ConsoleInit();
 //  ConsoleIoSendString("Test 1"); //works
@@ -432,28 +422,62 @@ int main(void)
   while (1)
   {
 
-		if(HAL_GPIO_ReadPin(GPIOD, button1_Pin) == GPIO_PIN_SET) {
-			printf("%i", step);
-			printf("\n\r");
+//	while(CH1_DC < 65535)
+//	{
+//	  TIM4->CCR1 = CH1_DC;
+//	  CH1_DC += 70;
+//	  HAL_Delay(1);
+//	}
+//
+//	while(CH1_DC > 0)
+//	{
+//	  TIM4->CCR1 = CH1_DC;
+//	  CH1_DC -= 70;
+//	  HAL_Delay(1);
+//	}
 
-			stepCV(1, 1000);
-			step += 1;
+	  TIM4->CCR1 = CH1_DC;
 
+	if(HAL_GPIO_ReadPin(GPIOD, button1_Pin) == GPIO_PIN_SET) {
+//		printf("%i", step);
+		printf("%i", CH1_DC);
+
+		printf("\n\r");
+
+		TIM4->CCR1 = CH1_DC;
+		stepCV(1, 1000);
+
+		step += 1;
+		if (CH1_DC <= 65535) {
+			CH1_DC += 100;
+		} else {
+			CH1_DC = 65535;
 		}
+	}
 
 
-		if(HAL_GPIO_ReadPin(GPIOB, button2_Pin) == GPIO_PIN_SET) {
-			printf("%i", step);
-			printf("\n\r");
+	if(HAL_GPIO_ReadPin(GPIOB, button2_Pin) == GPIO_PIN_SET) {
+//		printf("%i", step);
+		printf("%i", CH1_DC);
 
-			stepCCV(1, 1000);
-			step -= 1;
+		printf("\n\r");
+
+		TIM4->CCR1 = CH1_DC;
+		stepCCV(1, 1000);
+
+		step -= 1;
+		if (CH1_DC >= 0) {
+			CH1_DC -= 100;
+		} else {
+			CH1_DC = 0;
 		}
+	}
 
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
   }
   /* USER CODE END 3 */
 }
@@ -551,6 +575,65 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -559,11 +642,11 @@ static void MX_TIM2_Init(void)
 //{
 //
 //  /* USER CODE BEGIN USART1_Init 0 */
-////////////////////
+//////////////////////////////
 //  /* USER CODE END USART1_Init 0 */
 //
 //  /* USER CODE BEGIN USART1_Init 1 */
-////////////////////
+//////////////////////////////
 //  /* USER CODE END USART1_Init 1 */
 //  huart1.Instance = USART1;
 //  huart1.Init.BaudRate = 115200;
@@ -580,7 +663,7 @@ static void MX_TIM2_Init(void)
 //    Error_Handler();
 //  }
 //  /* USER CODE BEGIN USART1_Init 2 */
-////////////////////
+//////////////////////////////
 //  /* USER CODE END USART1_Init 2 */
 //
 //}
