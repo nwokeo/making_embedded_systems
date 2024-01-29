@@ -301,7 +301,7 @@ void lcd_init (void)
 
 	HAL_Delay(10);
 
-  // dislay initialisation
+  // init
 	lcd_send_cmd (0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
 	HAL_Delay(1);
 
@@ -309,7 +309,6 @@ void lcd_init (void)
 	HAL_Delay(1);
 
 	lcd_send_cmd (0x01);  // clear display
-	HAL_Delay(1);
 	HAL_Delay(1);
 
 	lcd_send_cmd (0x06); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
@@ -328,38 +327,13 @@ void lcd_run (void)
 	printf("LCD test start\n\r");
 	lcd_put_cur(0, 0);
 	lcd_send_string("HELLO ");
-	lcd_send_string("WORLD ");
-	lcd_send_string("FROM");
 
 	lcd_put_cur(1, 0);
-	lcd_send_string("CONTROLLERS TECH");
+	lcd_send_string("WORLD");
 	HAL_Delay(3000);
 
 	lcd_clear();
 	printf("LCD test end\n\r");
-}
-
-void lcd_loop(void) {
-	printf("LCD loop start\n\r");
-	for (int i=0;i<128;i++)
-	{
-	  lcd_put_cur(row, col);
-
-	  lcd_send_data(i+48);
-
-	  col++;
-
-	  if (col > 15) {row++; col = 0;}
-	  if (row > 1) row=0;
-
-	  HAL_Delay(250);
-	}
-	printf("LCD loop end\n\r");
-}
-
-void ledDelay(unsigned int n){
-	unsigned int i =0;
-	for ( i = 0; i < n; ++i) ;
 }
 
 /* USER CODE END 0 */
@@ -402,7 +376,7 @@ int main(void)
   HAL_TIM_Base_Start(&htim2);
   HAL_TIM_Base_Start(&htim4);
 
-  // LED
+  // init "position" LED
   int32_t CH1_DC = 0;
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 
@@ -411,7 +385,7 @@ int main(void)
   USART1_SendString("Test USART1_SendString \r\n");
 
   lcd_init ();
-  lcd_run();
+//  lcd_run();
 
 
   /* USER CODE END 2 */
@@ -420,13 +394,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
 	// "power" LED on while active
 	HAL_GPIO_WritePin(GPIOE, LD6_green_power_led_Pin, GPIO_PIN_SET);
 
-	// "power" LED on while active
+	// "activity" LED reset
 	HAL_GPIO_WritePin(GPIOE, LD8_orange_activity_led_Pin, GPIO_PIN_RESET);
 
-	// init var
+	// init position LED
 	TIM4->CCR1 = CH1_DC;
 
 	// on button 1 press
