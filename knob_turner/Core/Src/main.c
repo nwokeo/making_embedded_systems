@@ -371,7 +371,7 @@ void ledDelay(unsigned int n){
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	int step = 0;
+  int step = 0;
 
   /* USER CODE END 1 */
 
@@ -407,12 +407,11 @@ int main(void)
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 
   ConsoleInit();
-//  ConsoleIoSendString("Test 1"); //works
-//  USART1_SendString("Test USART1_SendString \r\n"); //works
-//  printf("Test printf \n\r"); //works
+  ConsoleIoSendString("Test 1");
+  USART1_SendString("Test USART1_SendString \r\n");
 
-	lcd_init ();
-	lcd_run();
+  lcd_init ();
+  lcd_run();
 
 
   /* USER CODE END 2 */
@@ -421,54 +420,74 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	// "power" LED on while active
+	HAL_GPIO_WritePin(GPIOE, LD6_green_power_led_Pin, GPIO_PIN_SET);
 
-//	while(CH1_DC < 65535)
-//	{
-//	  TIM4->CCR1 = CH1_DC;
-//	  CH1_DC += 70;
-//	  HAL_Delay(1);
-//	}
-//
-//	while(CH1_DC > 0)
-//	{
-//	  TIM4->CCR1 = CH1_DC;
-//	  CH1_DC -= 70;
-//	  HAL_Delay(1);
-//	}
+	// "power" LED on while active
+	HAL_GPIO_WritePin(GPIOE, LD8_orange_activity_led_Pin, GPIO_PIN_RESET);
 
-	  TIM4->CCR1 = CH1_DC;
+	// init var
+	TIM4->CCR1 = CH1_DC;
 
+	// on button 1 press
 	if(HAL_GPIO_ReadPin(GPIOD, button1_Pin) == GPIO_PIN_SET) {
-//		printf("%i", step);
-		printf("%i", CH1_DC);
 
+		// print step position. eventually output this to LCD.
+		printf("%i", step);
+		printf("\t\t");
+		printf("%i", CH1_DC);
 		printf("\n\r");
 
+		// "activity" LED on while motor is moving
+		HAL_GPIO_WritePin(GPIOE, LD8_orange_activity_led_Pin, GPIO_PIN_SET);
+
+		// update "position" LED to indicate position
 		TIM4->CCR1 = CH1_DC;
+
+		// move motor clockwise
 		stepCV(1, 1000);
 
+		// track position
 		step += 1;
-		if (CH1_DC <= 65535) {
-			CH1_DC += 100;
-		} else {
+
+		// set position LED brightness limits
+		if (step * 128 >= 0 && step * 128 <= 65535) {
+			CH1_DC = step * 128;
+		} else if (step * 128 > 65535) {
 			CH1_DC = 65535;
+		} else if (step * 128 < 0) {
+			CH1_DC = 0;
 		}
 	}
 
 
+	// on button 2 press
 	if(HAL_GPIO_ReadPin(GPIOB, button2_Pin) == GPIO_PIN_SET) {
-//		printf("%i", step);
-		printf("%i", CH1_DC);
 
+		// print step position. eventually output this to LCD.
+		printf("%i", step);
+		printf("\t\t");
+		printf("%i", CH1_DC);
 		printf("\n\r");
 
+		// "activity" LED on while motor is moving
+		HAL_GPIO_WritePin(GPIOE, LD8_orange_activity_led_Pin, GPIO_PIN_SET);
+
+		// update "position" LED to indicate position
 		TIM4->CCR1 = CH1_DC;
+
+		// move motor counter clockwise
 		stepCCV(1, 1000);
 
+		// track position
 		step -= 1;
-		if (CH1_DC >= 0) {
-			CH1_DC -= 100;
-		} else {
+
+		// set position LED brightness limits
+		if (step * 128 >= 0 && step * 128 <= 65535) {
+			CH1_DC = step * 128;
+		} else if (step * 128 > 65535) {
+			CH1_DC = 65535;
+		} else if (step * 128 < 0) {
 			CH1_DC = 0;
 		}
 	}
@@ -642,11 +661,11 @@ static void MX_TIM4_Init(void)
 //{
 //
 //  /* USER CODE BEGIN USART1_Init 0 */
-//////////////////////////////
+//////////////////////////////////
 //  /* USER CODE END USART1_Init 0 */
 //
 //  /* USER CODE BEGIN USART1_Init 1 */
-//////////////////////////////
+//////////////////////////////////
 //  /* USER CODE END USART1_Init 1 */
 //  huart1.Instance = USART1;
 //  huart1.Init.BaudRate = 115200;
@@ -663,7 +682,7 @@ static void MX_TIM4_Init(void)
 //    Error_Handler();
 //  }
 //  /* USER CODE BEGIN USART1_Init 2 */
-//////////////////////////////
+//////////////////////////////////
 //  /* USER CODE END USART1_Init 2 */
 //
 //}
@@ -720,7 +739,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, lcd_rw_Pin|lcd_e_Pin|lcd_d4_Pin|lcd_d5_Pin
-                          |lcd_d6_Pin|lcd_d7_Pin|lcd_rs_Pin, GPIO_PIN_RESET);
+                          |lcd_d6_Pin|lcd_d7_Pin|LD8_orange_activity_led_Pin|LD6_green_power_led_Pin
+                          |lcd_rs_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, stp1_Pin|stp2_Pin|stp3_Pin, GPIO_PIN_RESET);
@@ -729,9 +749,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(stp4_GPIO_Port, stp4_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : lcd_rw_Pin lcd_e_Pin lcd_d4_Pin lcd_d5_Pin
-                           lcd_d6_Pin lcd_d7_Pin lcd_rs_Pin */
+                           lcd_d6_Pin lcd_d7_Pin LD8_orange_activity_led_Pin LD6_green_power_led_Pin
+                           lcd_rs_Pin */
   GPIO_InitStruct.Pin = lcd_rw_Pin|lcd_e_Pin|lcd_d4_Pin|lcd_d5_Pin
-                          |lcd_d6_Pin|lcd_d7_Pin|lcd_rs_Pin;
+                          |lcd_d6_Pin|lcd_d7_Pin|LD8_orange_activity_led_Pin|LD6_green_power_led_Pin
+                          |lcd_rs_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

@@ -90,6 +90,10 @@ void Error_Handler(void);
 #define button2_EXTI_IRQn EXTI1_IRQn
 #define lcd_d7_Pin GPIO_PIN_7
 #define lcd_d7_GPIO_Port GPIOE
+#define LD8_orange_activity_led_Pin GPIO_PIN_14
+#define LD8_orange_activity_led_GPIO_Port GPIOE
+#define LD6_green_power_led_Pin GPIO_PIN_15
+#define LD6_green_power_led_GPIO_Port GPIOE
 #define DM_Pin GPIO_PIN_11
 #define DM_GPIO_Port GPIOA
 #define DP_Pin GPIO_PIN_12
