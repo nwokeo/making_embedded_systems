@@ -46,11 +46,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
-
-SPI_HandleTypeDef hspi1;
-
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim4;
 
 //UART_HandleTypeDef huart1;
 
@@ -63,14 +60,15 @@ PCD_HandleTypeDef hpcd_USB_FS;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_SPI1_Init(void);
 static void MX_USB_PCD_Init(void);
 //static void MX_USART1_UART_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 void USART1_SendString(const char* str);
+void PWM_Init(void);
+void Delay(unsigned int);
 
 /* USER CODE END PFP */
 
@@ -78,6 +76,8 @@ void USART1_SendString(const char* str);
 /* USER CODE BEGIN 0 */
 
 #define HAL_SMALL_DELAY  40
+int row=0;
+int col=0;
 
 // Define serial input and output functions using UART2
 int __io_putchar(int ch)
@@ -113,6 +113,12 @@ void microDelay (uint16_t delay)
 {
   __HAL_TIM_SET_COUNTER(&htim2, 0);
   while (__HAL_TIM_GET_COUNTER(&htim2) < delay);
+}
+
+void lcdDelay (uint16_t us)
+{
+	__HAL_TIM_SET_COUNTER(&htim4, 0);
+	while (__HAL_TIM_GET_COUNTER(&htim4) < us);
 }
 
 void stepCCV (int steps, uint16_t delay) // CCV - Counter Clockwise
@@ -209,6 +215,127 @@ void stepCV (int steps, uint16_t delay) // CV - Clockwise
   }
 }
 
+
+void send_to_lcd (char data, int rs)
+{
+	HAL_GPIO_WritePin(GPIOE, lcd_rs_Pin, rs);  // rs = 1 for data, rs=0 for command
+
+	/* write the data to the respective pin */
+	HAL_GPIO_WritePin(GPIOE, lcd_d7_Pin, ((data>>3)&0x01));
+	HAL_GPIO_WritePin(GPIOE, lcd_d6_Pin, ((data>>2)&0x01));
+	HAL_GPIO_WritePin(GPIOE, lcd_d5_Pin, ((data>>1)&0x01));
+	HAL_GPIO_WritePin(GPIOE, lcd_d4_Pin, ((data>>0)&0x01));
+
+	/* Toggle EN PIN to send the data
+	 * if the HCLK > 100 MHz, use the  20 us delay
+	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
+	 */
+	HAL_GPIO_WritePin(GPIOE, lcd_e_Pin, 1);
+	lcdDelay(20);
+	HAL_GPIO_WritePin(GPIOE, lcd_e_Pin, 0);
+	lcdDelay(20);
+}
+
+void lcd_send_cmd (char cmd)
+{
+    char datatosend;
+
+    /* send upper nibble first */
+    datatosend = ((cmd>>4)&0x0f);
+    send_to_lcd(datatosend,0);  // RS must be 0 while sending command
+
+    /* send Lower Nibble */
+    datatosend = ((cmd)&0x0f);
+	send_to_lcd(datatosend, 0);
+}
+
+void lcd_send_data (char data)
+{
+	char datatosend;
+
+	/* send higher nibble */
+	datatosend = ((data>>4)&0x0f);
+	send_to_lcd(datatosend, 1);  // rs =1 for sending data
+
+	/* send Lower nibble */
+	datatosend = ((data)&0x0f);
+	send_to_lcd(datatosend, 1);
+}
+
+void lcd_clear (void)
+{
+	lcd_send_cmd(0x01);
+	HAL_Delay(2);
+}
+
+void lcd_put_cur(int row, int col)
+{
+    switch (row)
+    {
+        case 0:
+            col |= 0x80;
+            break;
+        case 1:
+            col |= 0xC0;
+            break;
+    }
+
+    lcd_send_cmd (col);
+}
+
+
+void lcd_init (void)
+{
+	// 4 bit initialisation
+	HAL_Delay(50);  // wait for >40ms
+	lcd_send_cmd (0x30);
+
+	HAL_Delay(5);  // wait for >4.1ms
+	lcd_send_cmd (0x30);
+
+	HAL_Delay(1);  // wait for >100us
+	lcd_send_cmd (0x30);
+
+	HAL_Delay(10);
+	lcd_send_cmd (0x20);  // 4bit mode
+
+	HAL_Delay(10);
+
+  // init
+	lcd_send_cmd (0x28); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
+	HAL_Delay(1);
+
+	lcd_send_cmd (0x08); //Display on/off control --> D=0,C=0, B=0  ---> display off
+	HAL_Delay(1);
+
+	lcd_send_cmd (0x01);  // clear display
+	HAL_Delay(1);
+
+	lcd_send_cmd (0x06); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
+	HAL_Delay(1);
+
+	lcd_send_cmd (0x0C); //Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
+}
+
+void lcd_send_string (char *str)
+{
+	while (*str) lcd_send_data (*str++);
+}
+
+void lcd_run (void)
+{
+	printf("LCD test start\n\r");
+	lcd_put_cur(0, 0);
+	lcd_send_string("HELLO ");
+
+	lcd_put_cur(1, 0);
+	lcd_send_string("WORLD");
+	HAL_Delay(3000);
+
+	lcd_clear();
+	printf("LCD test end\n\r");
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -218,7 +345,7 @@ void stepCV (int steps, uint16_t delay) // CV - Clockwise
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	bool flash = true;
+  int step = 0;
 
   /* USER CODE END 1 */
 
@@ -240,49 +367,26 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_SPI1_Init();
   MX_USB_PCD_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start(&htim2);
+  HAL_TIM_Base_Start(&htim4);
 
-  void flash_led(){
-	printf("Flash\n\r");
-	HAL_GPIO_TogglePin(GPIOE, LD4_Pin);
-	HAL_Delay(1000);
-  }
-
-
-  void spinLights() {
-      GPIOE->ODR ^= GPIO_PIN_8; //LD4
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_9; //LD3
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_10;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_11;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_12;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_13;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_14;
-      HAL_Delay(100);
-      GPIOE->ODR ^= GPIO_PIN_15;
-      HAL_Delay(100);
-
-      GPIOE->ODR ^= GPIO_PIN_All;
-      HAL_Delay(100);
-      HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_All);
-      HAL_Delay(100);
-  }
+  // init "position" LED
+  int32_t CH1_DC = 0;
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 
   ConsoleInit();
-//  USART1_SendString("Test USART1_SendString \r\n");
-//  printf("Test printf \n\r");
+  ConsoleIoSendString("Test 1");
+  USART1_SendString("Test USART1_SendString \r\n");
+
+  lcd_init ();
+//  lcd_run();
+
 
   /* USER CODE END 2 */
 
@@ -291,48 +395,83 @@ int main(void)
   while (1)
   {
 
-//	  if (flash == true) {
-//		flash_led();
-//	  }
-//	  else {
-//		HAL_GPIO_WritePin(GPIOE, LD4_Pin, GPIO_PIN_RESET);
-//		ConsoleProcess();
-//	  }
+	// "power" LED on while active
+	HAL_GPIO_WritePin(GPIOE, LD6_green_power_led_Pin, GPIO_PIN_SET);
 
-		if(HAL_GPIO_ReadPin(GPIOA, B1_PIN_Pin) == GPIO_PIN_SET) { //B1_PIN_GPIO_Port
-			printf("Button Click \n\r");
-			spinLights();
+	// "activity" LED reset
+	HAL_GPIO_WritePin(GPIOE, LD8_orange_activity_led_Pin, GPIO_PIN_RESET);
+
+	// init position LED
+	TIM4->CCR1 = CH1_DC;
+
+	// on button 1 press
+	if(HAL_GPIO_ReadPin(GPIOD, button1_Pin) == GPIO_PIN_SET) {
+
+		// print step position. eventually output this to LCD.
+		printf("%i", step);
+		printf("\t\t");
+		printf("%i", CH1_DC);
+		printf("\n\r");
+
+		// "activity" LED on while motor is moving
+		HAL_GPIO_WritePin(GPIOE, LD8_orange_activity_led_Pin, GPIO_PIN_SET);
+
+		// update "position" LED to indicate position
+		TIM4->CCR1 = CH1_DC;
+
+		// move motor clockwise
+		stepCV(1, 1000);
+
+		// track position
+		step += 1;
+
+		// set position LED brightness limits
+		if (step * 128 >= 0 && step * 128 <= 65535) {
+			CH1_DC = step * 128;
+		} else if (step * 128 > 65535) {
+			CH1_DC = 65535;
+		} else if (step * 128 < 0) {
+			CH1_DC = 0;
 		}
-//		else {
-//			ConsoleProcess();
-//		}
+	}
 
-	    // 512 full rev & 1 rpm - 14648
-	    stepCV(512, 1000);  // 256 half revolution
-	    HAL_Delay(100);
-	    stepCCV(128, 1000); // 128 quarter revolution
-	    HAL_Delay(100);
 
-//	    HAL_GPIO_WritePin(IN1_PORT, IN1_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN1_PORT, IN1_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
-//	    HAL_GPIO_WritePin(IN2_PORT, IN2_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN2_PORT, IN2_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
-//	    HAL_GPIO_WritePin(IN3_PORT, IN3_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN3_PORT, IN3_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
-//	    HAL_GPIO_WritePin(IN4_PORT, IN4_PIN, GPIO_PIN_SET);   // IN1
-//		HAL_Delay(100);
-//		HAL_GPIO_WritePin(IN4_PORT, IN4_PIN, GPIO_PIN_RESET); // IN1
-//		HAL_Delay(100);
+	// on button 2 press
+	if(HAL_GPIO_ReadPin(GPIOB, button2_Pin) == GPIO_PIN_SET) {
+
+		// print step position. eventually output this to LCD.
+		printf("%i", step);
+		printf("\t\t");
+		printf("%i", CH1_DC);
+		printf("\n\r");
+
+		// "activity" LED on while motor is moving
+		HAL_GPIO_WritePin(GPIOE, LD8_orange_activity_led_Pin, GPIO_PIN_SET);
+
+		// update "position" LED to indicate position
+		TIM4->CCR1 = CH1_DC;
+
+		// move motor counter clockwise
+		stepCCV(1, 1000);
+
+		// track position
+		step -= 1;
+
+		// set position LED brightness limits
+		if (step * 128 >= 0 && step * 128 <= 65535) {
+			CH1_DC = step * 128;
+		} else if (step * 128 > 65535) {
+			CH1_DC = 65535;
+		} else if (step * 128 < 0) {
+			CH1_DC = 0;
+		}
+	}
+
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
   }
   /* USER CODE END 3 */
 }
@@ -350,11 +489,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
@@ -376,103 +514,13 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_USART1
-                              |RCC_PERIPHCLK_I2C1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_USART1;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
   PeriphClkInit.USBClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x2000090E;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 7;
-  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
 }
 
 /**
@@ -521,6 +569,65 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -529,11 +636,11 @@ static void MX_TIM2_Init(void)
 //{
 //
 //  /* USER CODE BEGIN USART1_Init 0 */
-////
+//////////////////////////////////
 //  /* USER CODE END USART1_Init 0 */
 //
 //  /* USER CODE BEGIN USART1_Init 1 */
-////
+//////////////////////////////////
 //  /* USER CODE END USART1_Init 1 */
 //  huart1.Instance = USART1;
 //  huart1.Init.BaudRate = 115200;
@@ -550,7 +657,7 @@ static void MX_TIM2_Init(void)
 //    Error_Handler();
 //  }
 //  /* USER CODE BEGIN USART1_Init 2 */
-////
+//////////////////////////////////
 //  /* USER CODE END USART1_Init 2 */
 //
 //}
@@ -603,11 +710,12 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|LD4_Pin|LD3_Pin|LD5_Pin
-                          |LD7_Pin|LD9_Pin|LD10_Pin|LD8_Pin
-                          |LD6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, lcd_rw_Pin|lcd_e_Pin|lcd_d4_Pin|lcd_d5_Pin
+                          |lcd_d6_Pin|lcd_d7_Pin|LD8_orange_activity_led_Pin|LD6_green_power_led_Pin
+                          |lcd_rs_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, stp1_Pin|stp2_Pin|stp3_Pin, GPIO_PIN_RESET);
@@ -615,28 +723,16 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(stp4_GPIO_Port, stp4_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : DRDY_Pin MEMS_INT3_Pin MEMS_INT4_Pin MEMS_INT2_Pin */
-  GPIO_InitStruct.Pin = DRDY_Pin|MEMS_INT3_Pin|MEMS_INT4_Pin|MEMS_INT2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : CS_I2C_SPI_Pin LD4_Pin LD3_Pin LD5_Pin
-                           LD7_Pin LD9_Pin LD10_Pin LD8_Pin
-                           LD6_Pin */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|LD4_Pin|LD3_Pin|LD5_Pin
-                          |LD7_Pin|LD9_Pin|LD10_Pin|LD8_Pin
-                          |LD6_Pin;
+  /*Configure GPIO pins : lcd_rw_Pin lcd_e_Pin lcd_d4_Pin lcd_d5_Pin
+                           lcd_d6_Pin lcd_d7_Pin LD8_orange_activity_led_Pin LD6_green_power_led_Pin
+                           lcd_rs_Pin */
+  GPIO_InitStruct.Pin = lcd_rw_Pin|lcd_e_Pin|lcd_d4_Pin|lcd_d5_Pin
+                          |lcd_d6_Pin|lcd_d7_Pin|LD8_orange_activity_led_Pin|LD6_green_power_led_Pin
+                          |lcd_rs_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : B1_PIN_Pin */
-  GPIO_InitStruct.Pin = B1_PIN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_PIN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : stp1_Pin stp2_Pin stp3_Pin */
   GPIO_InitStruct.Pin = stp1_Pin|stp2_Pin|stp3_Pin;
@@ -652,9 +748,24 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(stp4_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : button2_Pin */
+  GPIO_InitStruct.Pin = button2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(button2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : button1_Pin */
+  GPIO_InitStruct.Pin = button1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(button1_GPIO_Port, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
