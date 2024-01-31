@@ -1,11 +1,3 @@
-Algorithmic piece: Work in progress
-Serial port: Possibly for ESP32 or command line
 
-
-peripheral:
-1. PWM for motor driver
-2. You could also have a serial port for a command line via UART
-3. For a LED to meet the peripherals requirement it has to be a smart LED (eg, Neopixels / WS2812Bs).
-or 4. LCD
 
 
